@@ -1,0 +1,29 @@
+[
+  {
+    "name": "IIT Madras Institute Hospital",
+    "lat": 12.9915,
+    "lon": 80.2336,
+    "trauma_level": 3,
+    "beds_available": 4,
+    "contact": "+914422578333",
+    "specialties": ["Basic Trauma Support", "First Aid", "24/7 Ambulance Link"]
+  },
+  {
+    "name": "Apollo Proton Cancer Centre & Trauma Care",
+    "lat": 12.9644,
+    "lon": 80.2472,
+    "trauma_level": 1,
+    "beds_available": 14,
+    "contact": "+914433334444",
+    "specialties": ["Level-1 PolyTrauma", "NeuroSurgery", "Emergency ICU Operations", "Ventilators"]
+  },
+  {
+    "name": "Fortis Malar Hospital",
+    "lat": 13.0063,
+    "lon": 80.2575,
+    "trauma_level": 2,
+    "beds_available": 7,
+    "contact": "+914424914022",
+    "specialties": ["Level-2 Trauma Care", "Orthopedics", "Emergency General Surgery"]
+  }
+]

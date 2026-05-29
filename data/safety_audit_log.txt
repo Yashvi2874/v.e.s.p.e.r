@@ -1,0 +1,2 @@
+Timestamp,Type,Context
+"2026-05-29 17:20:43","BEHAVIORAL_STRESS_ANOMALY","Oh my god watch out!"
