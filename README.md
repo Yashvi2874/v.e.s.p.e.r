@@ -6,7 +6,7 @@ Built to target the critical post-crash **"Golden Hour"** window highlighted by 
 
 ---
 
-## 📸 System Dashboards in Action
+## System Dashboards in Action
 
 ### Tab 1: Live Safety Monitor (Biometrics Feed)
 ![V.E.S.P.E.R. Live Monitor Tab](docs/images/live_monitor_tab.png)
@@ -16,7 +16,7 @@ Built to target the critical post-crash **"Golden Hour"** window highlighted by 
 
 ---
 
-## 📖 Project Overview & Core Logic
+## Project Overview & Core Logic
 
 Unlike standard navigation apps that fail during network outages or route traffic uniformly regardless of medical requirements, **V.E.S.P.E.R.** features a deterministic **Clinical-Aware Triage Routing Engine**. When an incident occurs (such as a high-G deceleration signature or an occupant's verbal cry for help), the application overrides standard operations and redirects resources to a 100% offline geodetic spatial dashboard. This engine runs geodetic Haversine calculations locally on the CPU to index, filter, and rank nearby rescue infrastructure based on their clinical capabilities and spatial proximity.
 
@@ -27,7 +27,7 @@ Unlike standard navigation apps that fail during network outages or route traffi
 
 ---
 
-## 🖥️ User Interface Layout & Explanations
+## User Interface Layout & Explanations
 
 The dashboard features a high-contrast obsidian dark theme designed for night-driving legibility and immediate responsiveness. It implements a two-tab navigation structure:
 
@@ -56,7 +56,7 @@ An emergency dispatch triage hub that activates automatically during alerts or v
 
 ---
 
-## 🛠️ Repository Architecture
+## Repository Architecture
 
 ```
 vesper/
@@ -79,7 +79,7 @@ vesper/
 
 ---
 
-## ⚙️ Key Technical Enhancements
+## Key Technical Enhancements
 
 1.  **National Indian Scale Geocoding**: Integrated OpenStreetMap's **Nominatim Geocoding API** to resolve coordinates dynamically for any user input inside India.
 2.  **Real-Time Police and Hospital Integration**: Employs OpenStreetMap's **Overpass API** to fetch nodes and ways tagged as `amenity=hospital` or `amenity=police` within 15 km of the coordinates. Runs Haversine geodetic distance calculations on the live registers, with an offline pre-cached fallback database.
@@ -91,7 +91,7 @@ vesper/
 
 ---
 
-## 🚀 Installation & Setup
+## Installation & Setup
 
 ### 1. Create a Virtual Environment
 ```bash
@@ -115,7 +115,6 @@ python src/main.py
 
 ---
 
-## 👤 Author
+## Author
 
 **Yashasvi Gupta**  
-*CoERS Stage 1 Shortlist Submission | IIT Madras Road Safety Hackathon*
