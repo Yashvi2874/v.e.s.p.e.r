@@ -40,17 +40,48 @@ class HybridAttentionSpeechGUI:
         self.obd_manager = None
         
         # Window settings
-        self.root.title("VESPER - Mobile Emergency Terminal")
+        self.root.title("V.E.S.P.E.R. - Vehicle Edge Sensor Panic & Emergency Router")
         self.root.geometry("1200x750")
         self.root.minsize(800, 500)
         self.root.configure(bg=self.BG_PRIMARY)
         
         # Configure Tab Framework Design Elements
         self.style = ttk.Style()
-        self.style.theme_use("default")
+        self.style.theme_use("clam")
+        
+        # Configure Notebook styling
         self.style.configure("TNotebook", background=self.BG_PRIMARY, borderwidth=0)
-        self.style.configure("TNotebook.Tab", background=self.BG_SECONDARY, foreground=self.TEXT_SECONDARY, padding=[18, 6], font=(self.FONT_FAMILY, 10, "semibold"))
-        self.style.map("TNotebook.Tab", background=[("selected", self.ACCENT_PRIMARY)], foreground=[("selected", "white")])
+        self.style.configure(
+            "TNotebook.Tab", 
+            background=self.BG_SECONDARY, 
+            foreground=self.TEXT_SECONDARY, 
+            padding=(24, 8), 
+            font=(self.FONT_FAMILY, 13, "bold"),
+            borderwidth=0
+        )
+        self.style.map(
+            "TNotebook.Tab", 
+            background=[("selected", self.ACCENT_PRIMARY), ("!selected", self.BG_SECONDARY)], 
+            foreground=[("selected", "white"), ("!selected", self.TEXT_SECONDARY)]
+        )
+
+        # Style Combobox
+        self.style.configure(
+            "TCombobox", 
+            fieldbackground=self.BG_SECONDARY, 
+            background=self.BG_TERTIARY, 
+            foreground=self.TEXT_PRIMARY, 
+            bordercolor=self.BORDER_COLOR, 
+            arrowcolor=self.TEXT_PRIMARY,
+            font=(self.FONT_FAMILY, 15)
+        )
+        self.style.map(
+            "TCombobox",
+            fieldbackground=[("readonly", self.BG_SECONDARY)],
+            foreground=[("readonly", self.TEXT_PRIMARY)]
+        )
+        # Ensure dropdown popup list values are size 15
+        self.root.option_add("*TCombobox*Listbox.font", (self.FONT_FAMILY, 15))
 
         # Create bottom persistent bar first to ensure correct layout allocation
         self.create_road_sos_widgets()
@@ -90,6 +121,10 @@ class HybridAttentionSpeechGUI:
             "<Configure>",
             self._on_frame_configure
         )
+        self.canvas.bind(
+            "<Configure>",
+            self._on_canvas_configure
+        )
         
         self.canvas_window = self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
         self.canvas.configure(yscrollcommand=self.scrollbar.set)
@@ -104,8 +139,8 @@ class HybridAttentionSpeechGUI:
         
         self.title_label = tk.Label(
             self.header_frame, 
-            text="VESPER", 
-            font=(self.FONT_FAMILY, 22, "bold"), 
+            text="V.E.S.P.E.R.", 
+            font=(self.FONT_FAMILY, 34, "bold"), 
             fg=self.TEXT_PRIMARY, 
             bg=self.BG_PRIMARY
         )
@@ -113,8 +148,8 @@ class HybridAttentionSpeechGUI:
         
         self.subtitle_label = tk.Label(
             self.header_frame, 
-            text="Emergency Edge Routing & Driver Biometrics Dashboard", 
-            font=(self.FONT_FAMILY, 11), 
+            text="Vehicle Edge Sensor Panic & Emergency Router", 
+            font=(self.FONT_FAMILY, 14), 
             fg=self.TEXT_SECONDARY, 
             bg=self.BG_PRIMARY
         )
@@ -138,7 +173,7 @@ class HybridAttentionSpeechGUI:
         self.video_title = tk.Label(
             self.video_frame, 
             text="Live Driver Feed", 
-            font=(self.FONT_FAMILY, 11, "bold"), 
+            font=(self.FONT_FAMILY, 18, "bold"), 
             fg=self.TEXT_PRIMARY, 
             bg=self.BG_SECONDARY
         )
@@ -160,7 +195,7 @@ class HybridAttentionSpeechGUI:
         self.attention_title = tk.Label(
             self.attention_frame, 
             text="Driver Attention Index", 
-            font=(self.FONT_FAMILY, 11, "bold"), 
+            font=(self.FONT_FAMILY, 18, "bold"), 
             fg=self.TEXT_PRIMARY, 
             bg=self.BG_SECONDARY
         )
@@ -169,7 +204,7 @@ class HybridAttentionSpeechGUI:
         self.attention_label = tk.Label(
             self.attention_frame, 
             text="0%", 
-            font=(self.FONT_FAMILY, 28, "bold"), 
+            font=(self.FONT_FAMILY, 34, "bold"), 
             fg=self.ACCENT_GREEN, 
             bg=self.BG_SECONDARY
         )
@@ -180,7 +215,7 @@ class HybridAttentionSpeechGUI:
         self.progress_frame.pack(fill=tk.X, padx=20, pady=(0, 10))
         self.progress_frame.columnconfigure(0, weight=1)
         
-        self.progress_canvas = tk.Canvas(self.progress_frame, height=18, bg=self.BG_TERTIARY, highlightthickness=0)
+        self.progress_canvas = tk.Canvas(self.progress_frame, height=22, bg=self.BG_TERTIARY, highlightthickness=0)
         self.progress_canvas.grid(row=0, column=0, sticky="ew", padx=5)
         
         # Rolling Attention Line Chart
@@ -194,7 +229,7 @@ class HybridAttentionSpeechGUI:
         self.status_title = tk.Label(
             self.status_frame, 
             text="Driver Status Indicators", 
-            font=(self.FONT_FAMILY, 11, "bold"), 
+            font=(self.FONT_FAMILY, 18, "bold"), 
             fg=self.TEXT_PRIMARY, 
             bg=self.BG_SECONDARY
         )
@@ -203,7 +238,7 @@ class HybridAttentionSpeechGUI:
         self.drowsiness_label = tk.Label(
             self.status_frame, 
             text="Normal", 
-            font=(self.FONT_FAMILY, 14, "bold"), 
+            font=(self.FONT_FAMILY, 18, "bold"), 
             fg=self.ACCENT_GREEN, 
             bg=self.BG_SECONDARY
         )
@@ -212,7 +247,7 @@ class HybridAttentionSpeechGUI:
         self.status_label = tk.Label(
             self.status_frame, 
             text="Driver is alert and attentive", 
-            font=(self.FONT_FAMILY, 11), 
+            font=(self.FONT_FAMILY, 14), 
             fg=self.TEXT_SECONDARY, 
             bg=self.BG_SECONDARY
         )
@@ -226,7 +261,7 @@ class HybridAttentionSpeechGUI:
         self.transcription_title = tk.Label(
             self.transcription_frame, 
             text="Cabin Speech Logs", 
-            font=(self.FONT_FAMILY, 11, "bold"), 
+            font=(self.FONT_FAMILY, 18, "bold"), 
             fg=self.TEXT_PRIMARY, 
             bg=self.BG_SECONDARY
         )
@@ -239,13 +274,13 @@ class HybridAttentionSpeechGUI:
         self.transcription_text = scrolledtext.ScrolledText(
             self.transcription_text_frame, 
             wrap=tk.WORD, 
-            font=(self.FONT_FAMILY, 10),
+            font=(self.FONT_FAMILY, 13),
             bg=self.BG_PRIMARY,
             fg=self.TEXT_PRIMARY,
             insertbackground=self.TEXT_PRIMARY,
             relief=tk.FLAT,
             bd=0,
-            height=6
+            height=8
         )
         self.transcription_text.grid(row=0, column=0, sticky="nsew")
         
@@ -257,7 +292,7 @@ class HybridAttentionSpeechGUI:
         self.stress_warning_label = tk.Label(
             self.alerts_frame, 
             text="Biometric Core Active: Scanning for cognitive stress...", 
-            font=(self.FONT_FAMILY, 11, "bold"), 
+            font=(self.FONT_FAMILY, 18, "bold"), 
             fg=self.ACCENT_PRIMARY, 
             bg=self.BG_SECONDARY,
             highlightbackground=self.BORDER_COLOR,
@@ -271,7 +306,7 @@ class HybridAttentionSpeechGUI:
         self.help_warning_label = tk.Label(
             self.alerts_frame, 
             text="Acoustic Sensors Online: Listening for voice distress...", 
-            font=(self.FONT_FAMILY, 11, "bold"), 
+            font=(self.FONT_FAMILY, 18, "bold"), 
             fg=self.ACCENT_PRIMARY, 
             bg=self.BG_SECONDARY,
             highlightbackground=self.BORDER_COLOR,
@@ -291,7 +326,7 @@ class HybridAttentionSpeechGUI:
             text="Simulate Vehicle Collision Event", 
             bg=self.BG_SECONDARY, 
             fg=self.ACCENT_RED, 
-            font=(self.FONT_FAMILY, 11, "bold"), 
+            font=(self.FONT_FAMILY, 18, "bold"), 
             activebackground=self.BG_TERTIARY,
             activeforeground=self.ACCENT_RED,
             highlightbackground=self.BORDER_COLOR,
@@ -308,9 +343,33 @@ class HybridAttentionSpeechGUI:
         self.tab_sos = tk.Frame(self.notebook, bg=self.BG_PRIMARY)
         self.notebook.add(self.tab_sos, text=" RoadSOS Hub ")
 
+        # Scrollable container inside Tab 2
+        self.main_sos_frame = tk.Frame(self.tab_sos, bg=self.BG_PRIMARY)
+        self.main_sos_frame.pack(fill=tk.BOTH, expand=True)
+        
+        self.sos_canvas = tk.Canvas(self.main_sos_frame, bg=self.BG_PRIMARY, highlightthickness=0)
+        self.sos_scrollbar = tk.Scrollbar(self.main_sos_frame, orient="vertical", command=self.sos_canvas.yview)
+        self.scrollable_sos_frame = tk.Frame(self.sos_canvas, bg=self.BG_PRIMARY)
+        
+        self.scrollable_sos_frame.bind(
+            "<Configure>",
+            self._on_sos_frame_configure
+        )
+        self.sos_canvas.bind(
+            "<Configure>",
+            self._on_sos_canvas_configure
+        )
+        
+        self.sos_canvas_window = self.sos_canvas.create_window((0, 0), window=self.scrollable_sos_frame, anchor="nw")
+        self.sos_canvas.configure(yscrollcommand=self.sos_scrollbar.set)
+        
+        self.sos_canvas.pack(side="left", fill="both", expand=True)
+        self.sos_scrollbar.pack(side="right", fill="y")
+        self._bind_sos_scroll_events()
+
         # Upper Layout Block - Live Metadata Details
         self.meta_frame = tk.Frame(
-            self.tab_sos, 
+            self.scrollable_sos_frame, 
             bg=self.BG_SECONDARY, 
             highlightbackground=self.BORDER_COLOR, 
             highlightthickness=1
@@ -322,7 +381,7 @@ class HybridAttentionSpeechGUI:
             text="Network Node & Location Parameters", 
             fg=self.ACCENT_PRIMARY, 
             bg=self.BG_SECONDARY, 
-            font=(self.FONT_FAMILY, 10, "bold")
+            font=(self.FONT_FAMILY, 16, "bold")
         )
         self.meta_title.pack(anchor="w", padx=15, pady=(8, 2))
 
@@ -331,30 +390,29 @@ class HybridAttentionSpeechGUI:
             text="Resolving Telemetry...", 
             fg=self.TEXT_SECONDARY, 
             bg=self.BG_SECONDARY, 
-            font=(self.FONT_FAMILY, 10)
+            font=(self.FONT_FAMILY, 15)
         )
         self.lbl_loc.pack(anchor="w", padx=15, pady=(0, 8))
         
         # Alert Activation Announcement Banner
         self.alarm_banner = tk.Label(
-            self.tab_sos, 
+            self.scrollable_sos_frame, 
             text="System Status: Nominal | Safe Operations Active", 
             fg=self.ACCENT_GREEN, 
             bg=self.BG_SECONDARY, 
             highlightbackground=self.BORDER_COLOR, 
             highlightthickness=1, 
-            font=(self.FONT_FAMILY, 11, "bold"), 
+            font=(self.FONT_FAMILY, 22, "bold"), 
             height=2
         )
         self.alarm_banner.pack(fill=tk.X, padx=15, pady=5)
 
         # Main Workspace Split Pane Layout (Three columns config)
-        self.workspace_frame = tk.Frame(self.tab_sos, bg=self.BG_PRIMARY)
+        self.workspace_frame = tk.Frame(self.scrollable_sos_frame, bg=self.BG_PRIMARY)
         self.workspace_frame.pack(fill=tk.BOTH, expand=True, padx=15, pady=5)
 
         # ------------------ COLUMN 0: Local Settings & Coordinates ------------------
         self.loc_col = tk.Frame(self.workspace_frame, bg=self.BG_PRIMARY)
-        self.loc_col.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 10))
         
         # Location Control Frame
         self.loc_frame = tk.Frame(
@@ -369,7 +427,7 @@ class HybridAttentionSpeechGUI:
         tk.Label(
             self.loc_frame, 
             text="Regional Overrides", 
-            font=(self.FONT_FAMILY, 11, "bold"), 
+            font=(self.FONT_FAMILY, 20, "bold"), 
             fg=self.TEXT_PRIMARY, 
             bg=self.BG_SECONDARY
         ).grid(row=0, column=0, columnspan=2, sticky="w", padx=15, pady=(12, 8))
@@ -377,12 +435,12 @@ class HybridAttentionSpeechGUI:
         tk.Label(
             self.loc_frame, 
             text="Country:", 
-            font=(self.FONT_FAMILY, 9), 
+            font=(self.FONT_FAMILY, 15), 
             fg=self.TEXT_SECONDARY, 
             bg=self.BG_SECONDARY
         ).grid(row=1, column=0, sticky="w", padx=15, pady=5)
         
-        self.country_combo = ttk.Combobox(self.loc_frame, state="readonly", values=["India", "USA"])
+        self.country_combo = ttk.Combobox(self.loc_frame, state="readonly", values=["India"], font=(self.FONT_FAMILY, 15))
         self.country_combo.set("India")
         self.country_combo.grid(row=1, column=1, sticky="ew", padx=15, pady=5)
         self.country_combo.bind("<<ComboboxSelected>>", self.on_country_select)
@@ -390,12 +448,57 @@ class HybridAttentionSpeechGUI:
         tk.Label(
             self.loc_frame, 
             text="City Selection:", 
-            font=(self.FONT_FAMILY, 9), 
+            font=(self.FONT_FAMILY, 15), 
             fg=self.TEXT_SECONDARY, 
             bg=self.BG_SECONDARY
         ).grid(row=2, column=0, sticky="w", padx=15, pady=5)
         
-        self.city_combo = ttk.Combobox(self.loc_frame, state="readonly", values=["Chennai", "Bengaluru"])
+        self.city_combo = ttk.Combobox(
+            self.loc_frame, 
+            state="readonly", 
+            values=["Chennai", "Bengaluru", "Mumbai", "Delhi", "Kolkata", "Hyderabad", "Pune"], 
+            font=(self.FONT_FAMILY, 15)
+        )
+        self.city_combo.set("Chennai")
+        self.city_combo.grid(row=2, column=1, sticky="ew", padx=15, pady=5)
+        self.city_combo.bind("<<ComboboxSelected>>", self.on_city_select)
+
+        # Custom Search input for any location in India
+        tk.Label(
+            self.loc_frame, 
+            text="Search Location:", 
+            font=(self.FONT_FAMILY, 15), 
+            fg=self.TEXT_SECONDARY, 
+            bg=self.BG_SECONDARY
+        ).grid(row=3, column=0, sticky="w", padx=15, pady=5)
+        
+        self.search_entry = tk.Entry(
+            self.loc_frame, 
+            font=(self.FONT_FAMILY, 15),
+            bg=self.BG_PRIMARY,
+            fg=self.TEXT_PRIMARY,
+            insertbackground=self.TEXT_PRIMARY,
+            relief=tk.FLAT,
+            highlightthickness=1,
+            highlightbackground=self.BORDER_COLOR
+        )
+        self.search_entry.grid(row=3, column=1, sticky="ew", padx=15, pady=5)
+        self.search_entry.insert(0, "Somaiya, Mumbai")
+        
+        self.search_btn = tk.Button(
+            self.loc_frame, 
+            text="Search & Dispatch", 
+            bg=self.ACCENT_PRIMARY, 
+            fg="white", 
+            font=(self.FONT_FAMILY, 12, "bold"), 
+            activebackground=self.BG_TERTIARY,
+            activeforeground="white",
+            relief=tk.FLAT, 
+            bd=0,
+            pady=4,
+            command=self.on_location_search
+        )
+        self.search_btn.grid(row=4, column=0, columnspan=2, sticky="ew", padx=15, pady=(5, 15))
         self.city_combo.set("Chennai")
         self.city_combo.grid(row=2, column=1, sticky="ew", padx=15, pady=(5, 15))
         self.city_combo.bind("<<ComboboxSelected>>", self.on_city_select)
@@ -413,7 +516,7 @@ class HybridAttentionSpeechGUI:
         tk.Label(
             self.obd_frame, 
             text="Vehicle Telemetry Reads", 
-            font=(self.FONT_FAMILY, 11, "bold"), 
+            font=(self.FONT_FAMILY, 20, "bold"), 
             fg=self.TEXT_PRIMARY, 
             bg=self.BG_SECONDARY
         ).grid(row=0, column=0, columnspan=2, sticky="w", padx=15, pady=(12, 8))
@@ -421,7 +524,7 @@ class HybridAttentionSpeechGUI:
         tk.Label(
             self.obd_frame, 
             text="Speed / Velocity:", 
-            font=(self.FONT_FAMILY, 9), 
+            font=(self.FONT_FAMILY, 15), 
             fg=self.TEXT_SECONDARY, 
             bg=self.BG_SECONDARY
         ).grid(row=1, column=0, sticky="w", padx=15, pady=3)
@@ -429,7 +532,7 @@ class HybridAttentionSpeechGUI:
         self.obd_speed_label = tk.Label(
             self.obd_frame, 
             text="0.0 km/h", 
-            font=("Consolas", 10), 
+            font=("Consolas", 15), 
             fg=self.TEXT_PRIMARY, 
             bg=self.BG_SECONDARY
         )
@@ -438,7 +541,7 @@ class HybridAttentionSpeechGUI:
         tk.Label(
             self.obd_frame, 
             text="Engine RPM:", 
-            font=(self.FONT_FAMILY, 9), 
+            font=(self.FONT_FAMILY, 15), 
             fg=self.TEXT_SECONDARY, 
             bg=self.BG_SECONDARY
         ).grid(row=2, column=0, sticky="w", padx=15, pady=3)
@@ -446,7 +549,7 @@ class HybridAttentionSpeechGUI:
         self.obd_rpm_label = tk.Label(
             self.obd_frame, 
             text="0 RPM", 
-            font=("Consolas", 10), 
+            font=("Consolas", 15), 
             fg=self.TEXT_PRIMARY, 
             bg=self.BG_SECONDARY
         )
@@ -455,7 +558,7 @@ class HybridAttentionSpeechGUI:
         tk.Label(
             self.obd_frame, 
             text="Load Index:", 
-            font=(self.FONT_FAMILY, 9), 
+            font=(self.FONT_FAMILY, 15), 
             fg=self.TEXT_SECONDARY, 
             bg=self.BG_SECONDARY
         ).grid(row=3, column=0, sticky="w", padx=15, pady=3)
@@ -463,7 +566,7 @@ class HybridAttentionSpeechGUI:
         self.obd_load_label = tk.Label(
             self.obd_frame, 
             text="0.0 %", 
-            font=("Consolas", 10), 
+            font=("Consolas", 15), 
             fg=self.TEXT_PRIMARY, 
             bg=self.BG_SECONDARY
         )
@@ -472,7 +575,7 @@ class HybridAttentionSpeechGUI:
         tk.Label(
             self.obd_frame, 
             text="G-Force (Accelerometer):", 
-            font=(self.FONT_FAMILY, 9), 
+            font=(self.FONT_FAMILY, 15), 
             fg=self.TEXT_SECONDARY, 
             bg=self.BG_SECONDARY
         ).grid(row=4, column=0, sticky="w", padx=15, pady=3)
@@ -480,7 +583,7 @@ class HybridAttentionSpeechGUI:
         self.obd_gforce_label = tk.Label(
             self.obd_frame, 
             text="1.00g (Normal)", 
-            font=(self.FONT_FAMILY, 9, "bold"), 
+            font=(self.FONT_FAMILY, 15, "bold"), 
             fg=self.ACCENT_GREEN, 
             bg=self.BG_SECONDARY
         )
@@ -489,7 +592,7 @@ class HybridAttentionSpeechGUI:
         tk.Label(
             self.obd_frame, 
             text="Airbag Deployment DTC:", 
-            font=(self.FONT_FAMILY, 9), 
+            font=(self.FONT_FAMILY, 15), 
             fg=self.TEXT_SECONDARY, 
             bg=self.BG_SECONDARY
         ).grid(row=5, column=0, sticky="w", padx=15, pady=(3, 12))
@@ -497,7 +600,7 @@ class HybridAttentionSpeechGUI:
         self.obd_dtc_label = tk.Label(
             self.obd_frame, 
             text="OK", 
-            font=(self.FONT_FAMILY, 9, "bold"), 
+            font=(self.FONT_FAMILY, 15, "bold"), 
             fg=self.ACCENT_GREEN, 
             bg=self.BG_SECONDARY
         )
@@ -516,7 +619,7 @@ class HybridAttentionSpeechGUI:
         tk.Label(
             self.scenario_frame, 
             text="Scenario Simulator", 
-            font=(self.FONT_FAMILY, 11, "bold"), 
+            font=(self.FONT_FAMILY, 20, "bold"), 
             fg=self.TEXT_PRIMARY, 
             bg=self.BG_SECONDARY
         ).grid(row=0, column=0, columnspan=2, sticky="w", padx=15, pady=(12, 8))
@@ -524,26 +627,25 @@ class HybridAttentionSpeechGUI:
         tk.Label(
             self.scenario_frame, 
             text="Active Preset:", 
-            font=(self.FONT_FAMILY, 9), 
+            font=(self.FONT_FAMILY, 15), 
             fg=self.TEXT_SECONDARY, 
             bg=self.BG_SECONDARY
         ).grid(row=1, column=0, sticky="w", padx=15, pady=5)
         
-        self.scenario_combo = ttk.Combobox(self.scenario_frame, state="readonly", values=["Normal Drive", "Normal Cruise", "Swerving Erratic", "Hard Braking", "Critical Side Impact"])
+        self.scenario_combo = ttk.Combobox(self.scenario_frame, state="readonly", values=["Normal Drive", "Normal Cruise", "Swerving Erratic", "Hard Braking", "Critical Side Impact"], font=(self.FONT_FAMILY, 15))
         self.scenario_combo.set("Normal Drive")
         self.scenario_combo.grid(row=1, column=1, sticky="ew", padx=15, pady=(5, 15))
         self.scenario_combo.bind("<<ComboboxSelected>>", self.on_scenario_select)
 
         # ------------------ COLUMN 1: Triage Ranked Directory ------------------
         self.middle_col = tk.Frame(self.workspace_frame, bg=self.BG_PRIMARY)
-        self.middle_col.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=10)
 
         self.lbl_dir = tk.Label(
             self.middle_col, 
             text="Emergency Directory (Nearest Facilities)", 
             fg=self.TEXT_PRIMARY, 
             bg=self.BG_PRIMARY, 
-            font=(self.FONT_FAMILY, 11, "bold")
+            font=(self.FONT_FAMILY, 20, "bold")
         )
         self.lbl_dir.pack(anchor="w", pady=(0, 5))
 
@@ -551,10 +653,10 @@ class HybridAttentionSpeechGUI:
             self.middle_col, 
             bg=self.BG_SECONDARY, 
             fg=self.TEXT_PRIMARY, 
-            font=(self.FONT_FAMILY, 10), 
+            font=(self.FONT_FAMILY, 15), 
             wrap=tk.WORD, 
             bd=0, 
-            height=18, 
+            height=22, 
             highlightthickness=1, 
             highlightbackground=self.BORDER_COLOR
         )
@@ -562,7 +664,6 @@ class HybridAttentionSpeechGUI:
 
         # ------------------ COLUMN 2: Golden Hour Guide & SMS ------------------
         self.right_col = tk.Frame(self.workspace_frame, bg=self.BG_PRIMARY, width=350)
-        self.right_col.pack(side=tk.RIGHT, fill=tk.Y, padx=(10, 0))
 
         # Distress Auto-Generator Section
         self.msg_frame = tk.Frame(
@@ -576,18 +677,18 @@ class HybridAttentionSpeechGUI:
         tk.Label(
             self.msg_frame, 
             text="Outbound Emergency SMS Payload", 
-            font=(self.FONT_FAMILY, 10, "bold"), 
+            font=(self.FONT_FAMILY, 16, "bold"), 
             fg=self.TEXT_PRIMARY, 
             bg=self.BG_SECONDARY
         ).pack(anchor="w", padx=15, pady=(12, 8))
 
         self.txt_msg = tk.Text(
             self.msg_frame, 
-            height=4, 
+            height=8, 
             width=38, 
             bg=self.BG_PRIMARY, 
             fg=self.TEXT_PRIMARY, 
-            font=(self.FONT_FAMILY, 9), 
+            font=(self.FONT_FAMILY, 14), 
             bd=0,
             highlightthickness=1,
             highlightbackground=self.BORDER_COLOR
@@ -599,7 +700,7 @@ class HybridAttentionSpeechGUI:
             text="Copy Distress SMS", 
             bg=self.ACCENT_PRIMARY, 
             fg="white", 
-            font=(self.FONT_FAMILY, 9, "bold"), 
+            font=(self.FONT_FAMILY, 15, "bold"), 
             activebackground=self.BG_TERTIARY,
             activeforeground="white",
             relief=tk.FLAT, 
@@ -621,7 +722,7 @@ class HybridAttentionSpeechGUI:
         tk.Label(
             self.quick_dials, 
             text="Helplines Quick Dials", 
-            font=(self.FONT_FAMILY, 10, "bold"), 
+            font=(self.FONT_FAMILY, 16, "bold"), 
             fg=self.TEXT_PRIMARY, 
             bg=self.BG_SECONDARY
         ).pack(anchor="w", padx=15, pady=(12, 8))
@@ -631,7 +732,7 @@ class HybridAttentionSpeechGUI:
             text="Dial Medical", 
             bg=self.ACCENT_RED, 
             fg="white", 
-            font=(self.FONT_FAMILY, 9, "bold"), 
+            font=(self.FONT_FAMILY, 15, "bold"), 
             activebackground=self.BG_TERTIARY,
             activeforeground="white",
             relief=tk.FLAT, 
@@ -646,7 +747,7 @@ class HybridAttentionSpeechGUI:
             text="Dial Police", 
             bg=self.ACCENT_PRIMARY, 
             fg="white", 
-            font=(self.FONT_FAMILY, 9, "bold"), 
+            font=(self.FONT_FAMILY, 15, "bold"), 
             activebackground=self.BG_TERTIARY,
             activeforeground="white",
             relief=tk.FLAT, 
@@ -661,7 +762,7 @@ class HybridAttentionSpeechGUI:
             text="Reset Emergency State", 
             bg=self.BG_TERTIARY, 
             fg=self.TEXT_PRIMARY, 
-            font=(self.FONT_FAMILY, 9, "bold"), 
+            font=(self.FONT_FAMILY, 15, "bold"), 
             activebackground=self.BG_SECONDARY,
             activeforeground=self.TEXT_PRIMARY,
             relief=tk.FLAT, 
@@ -683,10 +784,10 @@ class HybridAttentionSpeechGUI:
         tk.Label(
             self.guide_frame, 
             text="Golden Hour First-Aid Guide", 
-            font=(self.FONT_FAMILY, 10, "bold"), 
+            font=(self.FONT_FAMILY, 16, "bold"), 
             fg=self.TEXT_PRIMARY, 
             bg=self.BG_SECONDARY
-        ).pack(anchor="w", padx=15, pady=(12, 8))
+        ).pack(anchor="w", padx=10, pady=(12, 8))
 
         guide_content = (
             "1. CONTROL BLEEDING: Apply direct, constant pressure to wounds using clean cloth.\n\n"
@@ -699,11 +800,18 @@ class HybridAttentionSpeechGUI:
             text=guide_content, 
             fg=self.TEXT_SECONDARY, 
             bg=self.BG_SECONDARY, 
-            font=(self.FONT_FAMILY, 9), 
+            font=(self.FONT_FAMILY, 15), 
             justify=tk.LEFT, 
-            wrap=280
+            anchor="w"
         )
-        lbl_guide.pack(padx=15, pady=(0, 15))
+        lbl_guide.pack(padx=10, pady=(0, 15), fill=tk.X)
+
+        # Dynamic wrap width scaling helper to avoid empty margins on right (full-width text)
+        def scale_guide_wrap(event):
+            new_wrap = event.width - 20
+            if new_wrap > 100:
+                lbl_guide.config(wrap=new_wrap)
+        lbl_guide.bind("<Configure>", scale_guide_wrap)
 
         # Load Initial Map parameters
         self.refresh_location_and_directory()
@@ -719,8 +827,12 @@ class HybridAttentionSpeechGUI:
     def _update_location_ui(self):
         if not self.router:
             return
-        country_code = "IN" if self.router.current_country.upper() in ["IN", "INDIA"] else "US"
-        self.country_combo.set("India" if country_code == "IN" else "USA")
+        self.country_combo.set("India")
+        # Dynamically append custom search city to selection options list
+        current_cities = list(self.city_combo["values"])
+        if self.router.current_city not in current_cities:
+            current_cities.append(self.router.current_city)
+            self.city_combo.config(values=current_cities)
         self.city_combo.set(self.router.current_city)
 
     def refresh_location_and_directory(self, selected_country="IN"):
@@ -830,60 +942,85 @@ class HybridAttentionSpeechGUI:
         self.root.after(800, self.flash_sos_loop)
 
     def on_country_select(self, event=None):
-        country = self.country_combo.get()
-        country_code = "IN" if country == "India" else "US"
-        
+        # Locked strictly to India-wide routing targets
+        self.country_combo.set("India")
         if self.router:
-            self.router.current_country = "India" if country_code == "IN" else "USA"
-            # Update cities/highways list
-            cities = self.router.db["India" if country_code == "IN" else "USA"]["cities"]
+            self.router.current_country = "IN"
+            cities = self.router.db["India"]["cities"]
             self.city_combo.config(values=cities)
             self.city_combo.set(cities[0])
             self.on_city_select(None)
         else:
-            cities = ["Chennai (NH-45)", "Bengaluru (NH-4)", "Mumbai (NH-8)", "Delhi (NH-2)"] if country_code == "IN" else ["Boston (I-95)", "New York (I-80)", "San Francisco (US-101)", "Chicago (I-90)"]
+            cities = ["Chennai", "Bengaluru", "Mumbai", "Delhi", "Kolkata", "Hyderabad", "Pune"]
             self.city_combo.config(values=cities)
             self.city_combo.set(cities[0])
-            self.refresh_location_and_directory(country_code)
+            self.refresh_location_and_directory("IN")
 
     def on_city_select(self, event=None):
         city = self.city_combo.get()
-        country = self.country_combo.get()
-        country_code = "IN" if country == "India" else "US"
+        country_code = "IN"
         
         if self.router:
             self.router.current_city = city
-            # Offset coords for manual route overrides
-            if country_code == "IN":
-                if "Chennai" in city:
-                    self.router.current_lat = 12.9910
-                    self.router.current_lon = 80.2420
-                elif "Bengaluru" in city:
-                    self.router.current_lat = 12.9431
-                    self.router.current_lon = 77.5971
-                elif "Mumbai" in city:
-                    self.router.current_lat = 19.0760
-                    self.router.current_lon = 72.8777
-                else: # Delhi
-                    self.router.current_lat = 28.6139
-                    self.router.current_lon = 77.2090
-            else:
-                if "Boston" in city:
-                    self.router.current_lat = 42.3625
-                    self.router.current_lon = -71.0694
-                elif "New York" in city:
-                    self.router.current_lat = 40.7387
-                    self.router.current_lon = -73.9742
-                elif "San Francisco" in city:
-                    self.router.current_lat = 37.7749
-                    self.router.current_lon = -122.4194
-                else: # Chicago
-                    self.router.current_lat = 41.8781
-                    self.router.current_lon = -87.6298
+            # Coordinate lookup for pre-cached override centers in India
+            if "Chennai" in city:
+                self.router.current_lat = 12.9910
+                self.router.current_lon = 80.2420
+            elif "Bengaluru" in city:
+                self.router.current_lat = 12.9431
+                self.router.current_lon = 77.5971
+            elif "Mumbai" in city:
+                self.router.current_lat = 19.0760
+                self.router.current_lon = 72.8777
+            elif "Delhi" in city:
+                self.router.current_lat = 28.6139
+                self.router.current_lon = 77.2090
+            elif "Kolkata" in city:
+                self.router.current_lat = 22.5726
+                self.router.current_lon = 88.3639
+            elif "Hyderabad" in city:
+                self.router.current_lat = 17.3850
+                self.router.current_lon = 78.4867
+            elif "Pune" in city:
+                self.router.current_lat = 18.5204
+                self.router.current_lon = 73.8567
             
             self._update_location_ui()
+            self.lbl_loc.config(text=f"Fetching real-time local infrastructure via OpenStreetMap...")
+            self.root.update()
+            
+            # Retrieve Overpass nodes/ways within the surrounding area
+            self.router.fetch_realtime_osm_data(self.router.current_lat, self.router.current_lon)
             
         self.refresh_location_and_directory(country_code)
+
+    def on_location_search(self):
+        query = self.search_entry.get().strip()
+        if not query:
+            return
+            
+        if self.router:
+            self.lbl_loc.config(text=f"Searching coordinates for '{query}' via Nominatim...")
+            self.root.update()
+            
+            lat, lon, city = self.router.geocode_location(query)
+            if lat and lon:
+                self.router.current_lat = lat
+                self.router.current_lon = lon
+                self.router.current_city = city or query
+                
+                self.lbl_loc.config(text=f"Fetching real-time local infrastructure via OpenStreetMap...")
+                self.root.update()
+                
+                # Retrieve Overpass nodes/ways for custom queried points
+                self.router.fetch_realtime_osm_data(lat, lon)
+                
+                self._update_location_ui()
+                self.refresh_location_and_directory("IN")
+                messagebox.showinfo("Location Dispatched", f"Successfully dispatched V.E.S.P.E.R. edge nodes to:\n{city or query}\nCoordinates: {lat:.4f}, {lon:.4f}")
+            else:
+                self.lbl_loc.config(text=f"Failed to geocode '{query}'. Fallback registry active.")
+                messagebox.showerror("Geocode Error", f"Could not find coordinates for: '{query}'. Please check spelling or connectivity.")
 
     def on_scenario_select(self, event=None):
         scenario = self.scenario_combo.get()
@@ -965,7 +1102,7 @@ class HybridAttentionSpeechGUI:
         progress_width = int((attention / 100) * width)
         color = self.ACCENT_GREEN if attention > 70 else self.ACCENT_AMBER if attention > 40 else self.ACCENT_RED
         self.progress_canvas.create_rectangle(0, 0, progress_width, height, fill=color, outline="")
-        self.progress_canvas.create_text(width//2, height//2, text=f"{attention:.1f}%", fill="#FFFFFF", font=(self.FONT_FAMILY, 9, "bold"))
+        self.progress_canvas.create_text(width//2, height//2, text=f"{attention:.1f}%", fill="#FFFFFF", font=(self.FONT_FAMILY, 12, "bold"))
 
     def update_drowsiness(self, alert):
         if alert == "DROWSY":
@@ -978,8 +1115,8 @@ class HybridAttentionSpeechGUI:
             self.drowsiness_label.config(text="Sleepiness Detected", fg=self.ACCENT_AMBER)
             self.status_label.config(text="Driver is yawning", fg=self.ACCENT_AMBER)
         elif alert == "LOW_ATTENTION":
-            self.drowsiness_label.config(text="Low Attention", fg=self.ACCENT_AMBER)
-            self.status_label.config(text="Warning: Driver may be on call", fg=self.ACCENT_AMBER)
+            self.drowsiness_label.config(text="Driver on Call (Low Attention)", fg=self.ACCENT_AMBER)
+            self.status_label.config(text="Warning: Phone usage detected (Driver is on call!)", fg=self.ACCENT_AMBER)
         elif alert == "HANDS_OFF_WHEEL":
             self.drowsiness_label.config(text="Hands Off Wheel", fg=self.ACCENT_RED)
             self.status_label.config(text="Warning: Driver's hands are off the steering wheel", fg=self.ACCENT_RED)
@@ -1007,7 +1144,7 @@ class HybridAttentionSpeechGUI:
             text=f"Cognitive Stress Warning: {status_msg.upper()}",
             fg=self.TEXT_PRIMARY,
             bg=self.ACCENT_RED,
-            font=(self.FONT_FAMILY, 11, "bold")
+            font=(self.FONT_FAMILY, 18, "bold")
         )
         self._flash_alert(self.stress_warning_label, self.ACCENT_RED, self.BG_SECONDARY, 6)
         self.root.after(8000, self._clear_stress_warning)
@@ -1017,7 +1154,7 @@ class HybridAttentionSpeechGUI:
         self.show_stress_warning(message)
 
     def show_help_warning(self, message):
-        self.help_warning_label.config(text="Voice Hook Intercept: Passenger requesting assistance", fg=self.TEXT_PRIMARY, bg=self.ACCENT_AMBER, font=(self.FONT_FAMILY, 11, "bold"))
+        self.help_warning_label.config(text="Voice Hook Intercept: Passenger requesting assistance", fg=self.TEXT_PRIMARY, bg=self.ACCENT_AMBER, font=(self.FONT_FAMILY, 18, "bold"))
         self._flash_alert(self.help_warning_label, self.ACCENT_AMBER, self.BG_SECONDARY, 6)
         self.root.after(8000, self._clear_help_warning)
 
@@ -1033,14 +1170,14 @@ class HybridAttentionSpeechGUI:
             text="Biometric Core Active: Scanning for cognitive stress...",
             fg=self.ACCENT_PRIMARY,
             bg=self.BG_SECONDARY,
-            font=(self.FONT_FAMILY, 11, "bold")
+            font=(self.FONT_FAMILY, 18, "bold")
         )
 
     def _clear_offensive_warning(self):
         self._clear_stress_warning()
 
     def _clear_help_warning(self):
-        self.help_warning_label.config(text="Acoustic Sensors Online: Listening for voice distress...", fg=self.ACCENT_PRIMARY, bg=self.BG_SECONDARY, font=(self.FONT_FAMILY, 11, "bold"))
+        self.help_warning_label.config(text="Acoustic Sensors Online: Listening for voice distress...", fg=self.ACCENT_PRIMARY, bg=self.BG_SECONDARY, font=(self.FONT_FAMILY, 18, "bold"))
 
     def show_final_score(self, score, rating, duration, readings, stress_count=0, offensive_count=None):
         # Handle backward compatibility parameter
@@ -1065,13 +1202,13 @@ class HybridAttentionSpeechGUI:
         
         details_frame = tk.Frame(score_window, bg=self.BG_PRIMARY)
         details_frame.pack(fill=tk.X, padx=20, pady=10)
-        tk.Label(details_frame, text=f"Ride Duration: {duration:.1f} minutes", fg=self.TEXT_SECONDARY, bg=self.BG_PRIMARY, font=(self.FONT_FAMILY, 10)).pack(pady=2)
-        tk.Label(details_frame, text=f"Attention Readings: {readings}", fg=self.TEXT_SECONDARY, bg=self.BG_PRIMARY, font=(self.FONT_FAMILY, 10)).pack(pady=2)
+        tk.Label(details_frame, text=f"Ride Duration: {duration:.1f} minutes", fg=self.TEXT_SECONDARY, bg=self.BG_PRIMARY, font=(self.FONT_FAMILY, 13)).pack(pady=2)
+        tk.Label(details_frame, text=f"Attention Readings: {readings}", fg=self.TEXT_SECONDARY, bg=self.BG_PRIMARY, font=(self.FONT_FAMILY, 13)).pack(pady=2)
         
         if actual_stress_count > 0:
-            tk.Label(details_frame, text=f"Cognitive Stress Incidents: {actual_stress_count}", fg=self.ACCENT_RED, bg=self.BG_PRIMARY, font=(self.FONT_FAMILY, 10)).pack(pady=2)
+            tk.Label(details_frame, text=f"Cognitive Stress Incidents: {actual_stress_count}", fg=self.ACCENT_RED, bg=self.BG_PRIMARY, font=(self.FONT_FAMILY, 13)).pack(pady=2)
             
-        tk.Button(score_window, text="Close Report", font=(self.FONT_FAMILY, 11, "bold"), fg="white", bg=self.ACCENT_PRIMARY, relief=tk.FLAT, command=score_window.destroy).pack(pady=15)
+        tk.Button(score_window, text="Close Report", font=(self.FONT_FAMILY, 18, "bold"), fg="white", bg=self.ACCENT_PRIMARY, relief=tk.FLAT, command=score_window.destroy).pack(pady=15)
         
         score_window.update_idletasks()
         x = (score_window.winfo_screenwidth() // 2) - (score_window.winfo_width() // 2)
@@ -1128,7 +1265,7 @@ class HybridAttentionSpeechGUI:
         """Appends the specialized RoadSoS operational dashboard layout."""
         self.sos_display_frame = tk.LabelFrame(
             self.root, text="Incident Dispatch Core", 
-            fg=self.ACCENT_PRIMARY, font=(self.FONT_FAMILY, 11, "bold"), bg=self.BG_PRIMARY,
+            fg=self.ACCENT_PRIMARY, font=(self.FONT_FAMILY, 18, "bold"), bg=self.BG_PRIMARY,
             relief=tk.FLAT, highlightbackground=self.BORDER_COLOR, highlightthickness=1
         )
         self.sos_display_frame.pack(fill=tk.X, padx=10, pady=5, side=tk.BOTTOM)
@@ -1136,7 +1273,7 @@ class HybridAttentionSpeechGUI:
         self.triage_text = tk.Label(
             self.sos_display_frame, 
             text="System Scanning Mode: Active monitoring via vision, speech, and OBD-II telemetry...",
-            fg=self.ACCENT_GREEN, bg=self.BG_PRIMARY, font=(self.FONT_FAMILY, 10), justify=tk.LEFT, anchor="w",
+            fg=self.ACCENT_GREEN, bg=self.BG_PRIMARY, font=(self.FONT_FAMILY, 15), justify=tk.LEFT, anchor="w",
             pady=5
         )
         self.triage_text.pack(fill=tk.X, padx=5, pady=5)
@@ -1180,6 +1317,15 @@ class HybridAttentionSpeechGUI:
             else:
                 self.scrollbar.pack(side="right", fill="y")
 
+    def _on_canvas_configure(self, event):
+        # Stretch inner frame to match canvas width
+        self.canvas.itemconfig(self.canvas_window, width=event.width)
+        # Stretch height only if contents are shorter than canvas to prevent scroll collapse
+        req_h = self.scrollable_frame.winfo_reqheight()
+        self.canvas.itemconfig(self.canvas_window, height=event.height if req_h < event.height else "")
+        # Recalculate column-wrap grids responsively
+        self.adjust_responsive_layout(self.root.winfo_width())
+
     def _bind_scroll_events(self):
         self.canvas.bind("<MouseWheel>", self._on_mousewheel)
         self.canvas.bind("<Button-4>", self._on_mousewheel)
@@ -1204,7 +1350,7 @@ class HybridAttentionSpeechGUI:
             fallback_lbl = tk.Label(
                 parent_frame,
                 text="Matplotlib not installed.\nReal-time chart disabled.",
-                font=(self.FONT_FAMILY, 10),
+                font=(self.FONT_FAMILY, 13),
                 fg=self.TEXT_SECONDARY,
                 bg=self.BG_SECONDARY
             )
@@ -1240,11 +1386,170 @@ class HybridAttentionSpeechGUI:
         except Exception:
             pass
 
+    def _on_sos_frame_configure(self, event=None):
+        self.sos_canvas.configure(scrollregion=self.sos_canvas.bbox("all"))
+        canvas_width = self.sos_canvas.winfo_width()
+        if canvas_width > 1:
+            self.sos_canvas.itemconfig(self.sos_canvas_window, width=canvas_width)
+            
+        bbox = self.sos_canvas.bbox("all")
+        if bbox:
+            canvas_height = self.sos_canvas.winfo_height()
+            content_height = bbox[3] - bbox[1]
+            if content_height <= canvas_height:
+                self.sos_scrollbar.pack_forget()
+            else:
+                self.sos_scrollbar.pack(side="right", fill="y")
+
+    def _on_sos_canvas_configure(self, event):
+        # Stretch inner frame to match canvas width
+        self.sos_canvas.itemconfig(self.sos_canvas_window, width=event.width)
+        # Stretch height only if contents are shorter than canvas to prevent scroll collapse
+        req_h = self.scrollable_sos_frame.winfo_reqheight()
+        self.sos_canvas.itemconfig(self.sos_canvas_window, height=event.height if req_h < event.height else "")
+        # Recalculate column-wrap grids responsively
+        self.adjust_responsive_layout(self.root.winfo_width())
+
+    def _bind_sos_scroll_events(self):
+        self.sos_canvas.bind("<MouseWheel>", self._on_sos_mousewheel)
+        self.sos_canvas.bind("<Button-4>", self._on_sos_mousewheel)
+        self.sos_canvas.bind("<Button-5>", self._on_sos_mousewheel)
+        
+        self.scrollable_sos_frame.bind("<MouseWheel>", self._on_sos_mousewheel)
+        self.scrollable_sos_frame.bind("<Button-4>", self._on_sos_mousewheel)
+        self.scrollable_sos_frame.bind("<Button-5>", self._on_sos_mousewheel)
+
+    def _on_sos_mousewheel(self, event):
+        bbox = self.sos_canvas.bbox("all")
+        if bbox and (bbox[3] - bbox[1]) > self.sos_canvas.winfo_height():
+            if event.num == 5 or event.delta < 0:
+                self.sos_canvas.yview_scroll(1, "units")
+            else:
+                self.sos_canvas.yview_scroll(-1, "units")
+
+    def adjust_responsive_layout(self, width):
+        # --- TAB 1 Monitor Responsiveness ---
+        if hasattr(self, 'video_column') and hasattr(self, 'info_column') and hasattr(self, 'content_frame'):
+            self.video_column.grid_forget()
+            self.info_column.grid_forget()
+            if width < 900:
+                # Stack vertically
+                self.video_column.grid(row=0, column=0, sticky="nsew", padx=0, pady=(0, 10))
+                self.info_column.grid(row=1, column=0, sticky="nsew", padx=0, pady=(10, 0))
+                self.content_frame.columnconfigure(0, weight=1)
+                self.content_frame.columnconfigure(1, weight=0)
+            else:
+                # Side-by-side
+                self.video_column.grid(row=0, column=0, sticky="nsew", padx=(0, 10), pady=0)
+                self.info_column.grid(row=0, column=1, sticky="nsew", padx=(10, 0), pady=0)
+                self.content_frame.columnconfigure(0, weight=1)
+                self.content_frame.columnconfigure(1, weight=1)
+
+        # --- TAB 2 RoadSOS Responsiveness ---
+        if hasattr(self, 'loc_col') and hasattr(self, 'middle_col') and hasattr(self, 'right_col') and hasattr(self, 'workspace_frame'):
+            self.loc_col.grid_forget()
+            self.middle_col.grid_forget()
+            self.right_col.grid_forget()
+            
+            if width < 768:
+                # 1-column layout: Stack all 3 columns vertically
+                self.loc_col.grid(row=0, column=0, sticky="nsew", padx=0, pady=5)
+                self.middle_col.grid(row=1, column=0, sticky="nsew", padx=0, pady=5)
+                self.right_col.grid(row=2, column=0, sticky="nsew", padx=0, pady=5)
+                
+                self.workspace_frame.columnconfigure(0, weight=1)
+                self.workspace_frame.columnconfigure(1, weight=0)
+                self.workspace_frame.columnconfigure(2, weight=0)
+            elif width < 1100:
+                # 2-column layout: Left has loc_col and right_col, Right has middle_col
+                self.loc_col.grid(row=0, column=0, sticky="nsew", padx=(0, 10), pady=5)
+                self.right_col.grid(row=1, column=0, sticky="nsew", padx=(0, 10), pady=5)
+                self.middle_col.grid(row=0, column=1, rowspan=2, sticky="nsew", padx=(10, 0), pady=5)
+                
+                self.workspace_frame.columnconfigure(0, weight=1)
+                self.workspace_frame.columnconfigure(1, weight=1)
+                self.workspace_frame.columnconfigure(2, weight=0)
+            else:
+                # 3-column layout: Side-by-side
+                self.loc_col.grid(row=0, column=0, sticky="nsew", padx=(0, 10), pady=0)
+                self.middle_col.grid(row=0, column=1, sticky="nsew", padx=10, pady=0)
+                self.right_col.grid(row=0, column=2, sticky="nsew", padx=(10, 0), pady=0)
+                
+                self.workspace_frame.columnconfigure(0, weight=1)
+                self.workspace_frame.columnconfigure(1, weight=1)
+                self.workspace_frame.columnconfigure(2, weight=1)
+
+            # Stretch row configs
+            self.workspace_frame.rowconfigure(0, weight=1)
+            self.workspace_frame.rowconfigure(1, weight=1)
+            self.workspace_frame.rowconfigure(2, weight=1)
+
     def on_resize(self, event):
-        if hasattr(self, 'last_attention') and event.widget == self.root:
-            self.root.after_idle(self._update_attention_progress, self.last_attention)
-        if hasattr(self, 'last_frame') and self.last_frame is not None and event.widget == self.root:
-            self.root.after_idle(self.update_video, self.last_frame)
+        if event.widget == self.root:
+            if not hasattr(self, '_last_width') or self._last_width != event.width or self._last_height != event.height:
+                self._last_width = event.width
+                self._last_height = event.height
+                self.adjust_responsive_layout(event.width)
+                
+            if hasattr(self, 'last_attention'):
+                self.root.after_idle(self._update_attention_progress, self.last_attention)
+            if hasattr(self, 'last_frame') and self.last_frame is not None:
+                self.root.after_idle(self.update_video, self.last_frame)
+
+    def show_gsm_terminal(self, log_text):
+        """Displays a simulated serial monitor terminal showing AT commands sent to the GSM module."""
+        term_window = tk.Toplevel(self.root)
+        term_window.title("V.E.S.P.E.R. - GSM AT Serial Monitor (Simulated)")
+        term_window.geometry("600x450")
+        term_window.configure(bg=self.BG_PRIMARY)
+        term_window.resizable(False, False)
+        term_window.transient(self.root)
+        
+        # Heading
+        tk.Label(
+            term_window, 
+            text="GSM AT Command Serial Console", 
+            font=(self.FONT_FAMILY, 12, "bold"), 
+            fg=self.ACCENT_PRIMARY, 
+            bg=self.BG_PRIMARY
+        ).pack(pady=10)
+        
+        # Scrolled Text for Console
+        console = scrolledtext.ScrolledText(
+            term_window, 
+            wrap=tk.WORD, 
+            font=("Consolas", 10),
+            bg="#020204",
+            fg="#00FF00",  # Classic matrix green
+            insertbackground="#00FF00",
+            relief=tk.FLAT,
+            bd=0,
+            padx=10,
+            pady=10
+        )
+        console.pack(fill=tk.BOTH, expand=True, padx=15, pady=(0, 10))
+        
+        # Insert log text
+        console.insert(tk.END, log_text)
+        console.config(state=tk.DISABLED)
+        
+        # Close button
+        tk.Button(
+            term_window, 
+            text="Close Console", 
+            font=(self.FONT_FAMILY, 10, "bold"), 
+            fg="white", 
+            bg=self.ACCENT_PRIMARY, 
+            relief=tk.FLAT, 
+            command=term_window.destroy,
+            pady=5
+        ).pack(pady=10)
+        
+        # Center window
+        term_window.update_idletasks()
+        x = (term_window.winfo_screenwidth() // 2) - (term_window.winfo_width() // 2)
+        y = (term_window.winfo_screenheight() // 2) - (term_window.winfo_height() // 2)
+        term_window.geometry(f"+{x}+{y}")
 
 def main():
     root = tk.Tk()

@@ -43,7 +43,11 @@ class SpeechRecognizer:
         
         # Re-framed safety markers replacing legacy word filters
         default_markers = ["stop", "move", "watch out", "crazy", "get out", "hit"]
-        self.stress_markers = [w.strip().lower() for w in (stress_markers or offensive_words or default_markers) if w.strip()]
+        self.stress_markers = [w.strip().lower() for w in (stress_markers or default_markers) if w.strip()]
+        
+        # Explicit offensive/aggressive road-rage words list
+        default_offensive = ["idiot", "stupid", "bastard", "fool", "damn", "shut up", "kill", "hate", "trash", "ass", "jerk"]
+        self.offensive_words = [w.strip().lower() for w in (offensive_words or default_offensive) if w.strip()]
         
         self.help_words = [w.strip().lower() for w in (help_words or []) if w.strip()]
         self.help_phrases = self.help_words
@@ -98,6 +102,7 @@ class SpeechRecognizer:
         self._stop_listening = None
         self._last_alert_time = 0.0
         self._last_help_alert_time = 0.0
+        self.is_on_call = False
         
         # Initialize safety audit log file
         self.log_file = "data/safety_audit_log.txt"
@@ -143,27 +148,51 @@ class SpeechRecognizer:
             pass
 
     def process_transcribed_chunk(self, text):
-        """Evaluates incoming cabin audio for cognitive load anomalies."""
+        """Evaluates incoming cabin audio for cognitive load anomalies and offensive language."""
         cleaned_text = text.lower()
         print(f"[Acoustic Input] Parsing: {cleaned_text}")
         
-        # Look for behavioral stress indicators
+        # 1. Look for behavioral stress indicators
         matched_markers = []
         for marker in self.stress_markers:
             if re.search(r'\b' + re.escape(marker) + r'\b', cleaned_text):
                 matched_markers.append(marker)
             else:
-                # Fuzzy matching fallback
                 ratio = difflib.SequenceMatcher(None, marker, cleaned_text).ratio()
                 if ratio >= self.fuzzy_threshold:
                     matched_markers.append(marker)
         
-        if matched_markers:
-            print(f"[Acoustic Anomaly] High cognitive load markers detected: {matched_markers}")
+        # 2. Look for offensive/aggressive road-rage words
+        matched_offensive = []
+        for word in self.offensive_words:
+            if re.search(r'\b' + re.escape(word) + r'\b', cleaned_text):
+                matched_offensive.append(word)
+            else:
+                ratio = difflib.SequenceMatcher(None, word, cleaned_text).ratio()
+                if ratio >= self.fuzzy_threshold:
+                    matched_offensive.append(word)
+        
+        # Process and log incidents
+        if matched_markers or matched_offensive:
             self.stress_detected = True
+            timestamp = self.get_current_timestamp()
             
-            # Fire safety-first incident logger
-            self.log_high_cognitive_stress_incident(text)
+            if matched_offensive:
+                print(f"[Acoustic Anomaly] Offensive language detected: {matched_offensive}")
+                log_type = "OFFENSIVE_LANGUAGE_ON_CALL_ANOMALY" if getattr(self, 'is_on_call', False) else "OFFENSIVE_LANGUAGE_ANOMALY"
+                self.write_to_safety_log(timestamp, type=log_type, context=text)
+                if self.controller and hasattr(self.controller, 'reduce_attention_score_from_distraction'):
+                    # Custom warning in GUI for offensive language
+                    self.controller.reduce_attention_score_from_distraction(penalty=10)
+                    if hasattr(self.controller, 'gui') and self.controller.gui:
+                        warning_msg = "Offensive Language While on Call Detected" if getattr(self, 'is_on_call', False) else "Offensive Language Detected"
+                        self.controller.gui.show_stress_warning(warning_msg)
+            
+            if matched_markers:
+                print(f"[Acoustic Anomaly] High cognitive stress markers detected: {matched_markers}")
+                self.write_to_safety_log(timestamp, type="BEHAVIORAL_STRESS_ANOMALY", context=text)
+                if self.controller and hasattr(self.controller, 'reduce_attention_score_from_distraction') and not matched_offensive:
+                    self.controller.reduce_attention_score_from_distraction(penalty=10)
         else:
             self.stress_detected = False
 

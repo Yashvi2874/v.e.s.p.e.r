@@ -20,9 +20,9 @@ phone_aliases = ["cell phone", "phone", "mobile phone"]
 
 # Initialize MediaPipe components
 try:
-    mp_face_mesh = getattr(mp.solutions, 'face_mesh', None)
-    mp_hands = getattr(mp.solutions, 'hands', None)
-    mp_drawing = getattr(mp.solutions, 'drawing_utils', None)
+    import mediapipe.python.solutions.face_mesh as mp_face_mesh
+    import mediapipe.python.solutions.hands as mp_hands
+    import mediapipe.python.solutions.drawing_utils as mp_drawing
     MEDIAPIPE_AVAILABLE = mp_face_mesh is not None and mp_hands is not None and mp_drawing is not None
 except Exception:
     mp_face_mesh = None
@@ -30,17 +30,17 @@ except Exception:
     mp_drawing = None
     MEDIAPIPE_AVAILABLE = False
 
-if MEDIAPIPE_AVAILABLE and mp_face_mesh and mp_hands:
+if MEDIAPIPE_AVAILABLE:
     face_mesh = mp_face_mesh.FaceMesh(
-        refine_landmarks=False,
+        refine_landmarks=True,  # Set to True for higher landmark precision
         max_num_faces=1,
-        min_detection_confidence=0.7,
-        min_tracking_confidence=0.7
+        min_detection_confidence=0.5,
+        min_tracking_confidence=0.5
     )
     hands = mp_hands.Hands(
         max_num_hands=2,
-        min_detection_confidence=0.7,
-        min_tracking_confidence=0.7,
+        min_detection_confidence=0.5,
+        min_tracking_confidence=0.5,
         model_complexity=0
     )
 else:
@@ -57,16 +57,24 @@ def eye_aspect_ratio(landmarks, eye_indices):
     return EAR
 
 # Calculate mouth aspect ratio for yawn detection
-def mouth_aspect_ratio(landmarks, mouth_indices):
+def mouth_aspect_ratio(landmarks, mouth_indices=None):
     try:
-        mouth_points = [np.array(landmarks[i]) for i in mouth_indices]
-        A = np.linalg.norm(mouth_points[2] - mouth_points[10])
-        B = np.linalg.norm(mouth_points[3] - mouth_points[9])
-        C = np.linalg.norm(mouth_points[4] - mouth_points[8])
-        D = np.linalg.norm(mouth_points[0] - mouth_points[6])
-        if D == 0:
+        # Landmarks are 2D coordinates (x, y)
+        # Horizontal distance: corner to corner (61 to 291)
+        horizontal_dist = np.linalg.norm(np.array(landmarks[61]) - np.array(landmarks[291]))
+        
+        # Vertical distance: 3 vertical pairs across the lips for robustness
+        # Pair 1: Left-center (82, 87)
+        # Pair 2: Center (13, 14)
+        # Pair 3: Right-center (312, 317)
+        v1 = np.linalg.norm(np.array(landmarks[82]) - np.array(landmarks[87]))
+        v2 = np.linalg.norm(np.array(landmarks[13]) - np.array(landmarks[14]))
+        v3 = np.linalg.norm(np.array(landmarks[312]) - np.array(landmarks[317]))
+        
+        if horizontal_dist == 0:
             return 0.0
-        MAR = (A + B + C) / (3.0 * D)
+            
+        MAR = (v1 + v2 + v3) / (3.0 * horizontal_dist)
         return MAR
     except Exception:
         return 0.0
@@ -74,31 +82,44 @@ def mouth_aspect_ratio(landmarks, mouth_indices):
 # Detect if person is speaking or eating to avoid false yawning positives
 def is_speaking_or_eating(landmarks):
     try:
-        mouth_points = [np.array(landmarks[i]) for i in MOUTH]
-        mouth_width = np.linalg.norm(mouth_points[0] - mouth_points[6])
-        mouth_height = np.linalg.norm(mouth_points[2] - mouth_points[10])
-        if mouth_width > 0 and mouth_height > 0:
-            width_height_ratio = mouth_width / mouth_height
-            return width_height_ratio < 3.0
-        return False
+        horizontal_dist = np.linalg.norm(np.array(landmarks[61]) - np.array(landmarks[291]))
+        vertical_dist = np.linalg.norm(np.array(landmarks[13]) - np.array(landmarks[14]))
+        
+        if vertical_dist == 0:
+            return False
+            
+        ratio = horizontal_dist / vertical_dist
+        # Speaking/eating is characterized by moderate vertical opening (ratio between 1.5 and 4.0)
+        # Yawning has a very large vertical opening (ratio < 1.5)
+        # Closed mouth has a very small vertical opening (ratio > 4.0)
+        return 1.5 <= ratio <= 4.0
     except Exception:
         return False
 
 # Detect gaze direction
 def get_gaze_direction(landmarks, w, h):
     try:
-        left_eye = np.array(landmarks[133])
-        right_eye = np.array(landmarks[362])
-        nose_tip = np.array(landmarks[1])
+        left_eye = np.array(landmarks[133])   # Left eye inner corner
+        right_eye = np.array(landmarks[362])  # Right eye inner corner
+        nose_tip = np.array(landmarks[1])     # Nose tip
+        
+        # Calculate eye distance as a scale normalization factor
+        eye_dist = np.linalg.norm(right_eye - left_eye)
+        if eye_dist == 0:
+            return True
+            
+        # 1. Horizontal head turn (yaw offset relative to eyes center)
         eye_center_x = (left_eye[0] + right_eye[0]) / 2
+        yaw_offset = abs(nose_tip[0] - eye_center_x) / eye_dist
+        
+        # 2. Vertical head tilt (pitch offset relative to eyes center)
         eye_center_y = (left_eye[1] + right_eye[1]) / 2
-        face_center_x = w / 2
-        face_center_y = h / 2
-        x_diff = abs(eye_center_x - face_center_x)
-        y_diff = abs(eye_center_y - face_center_y)
-        x_threshold = w * 0.08
-        y_threshold = h * 0.08
-        looking_away = (x_diff > x_threshold or y_diff > y_threshold)
+        pitch_offset = (nose_tip[1] - eye_center_y) / eye_dist
+        
+        # Optimized scale-invariant thresholds:
+        # Looking straight gives a pitch_offset around 0.70.
+        # yaw_offset > 0.38 detects looking away horizontally.
+        looking_away = (yaw_offset > 0.38) or (pitch_offset < 0.42 or pitch_offset > 0.98)
         return not looking_away
     except Exception:
         return True
@@ -231,7 +252,7 @@ drowsy = False
 drowsy_warning = False
 
 # Yawning detection parameters
-YAWN_THRESHOLD = 0.7
+YAWN_THRESHOLD = 0.50
 YAWN_CONSEC_FRAMES = 25
 YAWN_RECOVERY_RATE = 3
 mar_counter = 0
@@ -378,20 +399,24 @@ def detect_attention_and_drowsiness(frame, speech_recognizer=None):
             face_detected = True
             face_landmarks = face_results.multi_face_landmarks[0]
             face_landmarks_list = [(lm.x * w, lm.y * h) for lm in face_landmarks.landmark]
-            leftEAR = eye_aspect_ratio(face_landmarks_list, LEFT_EYE)
-            rightEAR = eye_aspect_ratio(face_landmarks_list, RIGHT_EYE)
+            # Uniform scale scaling by w to prevent aspect ratio distortion on aspect ratio grids (4:3)
+            face_landmarks_undistorted = [(lm.x * w, lm.y * w) for lm in face_landmarks.landmark]
+            
+            leftEAR = eye_aspect_ratio(face_landmarks_undistorted, LEFT_EYE)
+            rightEAR = eye_aspect_ratio(face_landmarks_undistorted, RIGHT_EYE)
             EAR_avg = (leftEAR + rightEAR) / 2.0
             eyes_open = EAR_avg > EAR_THRESHOLD
-            MAR_avg = mouth_aspect_ratio(face_landmarks_list, MOUTH)
-            speaking_or_eating = is_speaking_or_eating(face_landmarks_list)
+            MAR_avg = mouth_aspect_ratio(face_landmarks_undistorted, MOUTH)
+            speaking_or_eating = is_speaking_or_eating(face_landmarks_undistorted)
             
-            if face_detected and eyes_open and MAR_avg > YAWN_THRESHOLD and not speaking_or_eating:
+            is_yawning_now = MAR_avg > YAWN_THRESHOLD and (not speaking_or_eating or MAR_avg > 0.60)
+            if face_detected and eyes_open and is_yawning_now:
                 mar_counter += 1
             else:
                 mar_counter = max(0, mar_counter - YAWN_RECOVERY_RATE)
             
             yawning = mar_counter >= YAWN_CONSEC_FRAMES
-            looking_at_screen = get_gaze_direction(face_landmarks_list, w, h)
+            looking_at_screen = get_gaze_direction(face_landmarks_undistorted, w, h)
             
             # Draw face mesh landmarks
             if mp_drawing and hasattr(mp_drawing, 'draw_landmarks'):
@@ -403,8 +428,8 @@ def detect_attention_and_drowsiness(frame, speech_recognizer=None):
                         mp_drawing.DrawingSpec(color=(0, 255, 0), thickness=1, circle_radius=1),
                         mp_drawing.DrawingSpec(color=(0, 0, 255), thickness=1, circle_radius=1)
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    print("[Drawing Error] Face mesh draw failed:", e)
     
     # Drowsiness detection
     if face_detected:
@@ -462,8 +487,8 @@ def detect_attention_and_drowsiness(frame, speech_recognizer=None):
                             mp_drawing.DrawingSpec(color=(255, 0, 0), thickness=2, circle_radius=2),
                             mp_drawing.DrawingSpec(color=(255, 255, 0), thickness=2, circle_radius=2)
                         )
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        print("[Drawing Error] Hand draw failed:", e)
             
             # More responsive hand-on-phone state update
             if hand_on_phone_current:

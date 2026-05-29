@@ -19,17 +19,18 @@ class SOSRouter:
         loc_data = self.location_service.capture_current_coordinates()
         self.current_lat = loc_data.get("lat", 12.9910)
         self.current_lon = loc_data.get("lon", 80.2420)
-        self.current_country = loc_data.get("country", "IN")
-        self.current_city = "Chennai" if self.current_country == "IN" else "Boston"
+        self.current_country = "IN"
+        self.current_city = "Chennai"
         self.is_online = self.location_service.check_network_connectivity()
+        
+        # Real-time fetched hospital and police registers
+        self.realtime_hospitals = []
+        self.realtime_police = []
         
         # Mapping countries and routes for manual dropdown overrides
         self.db = {
             "India": {
-                "cities": ["Chennai (NH-45)", "Bengaluru (NH-4)", "Mumbai (NH-8)", "Delhi (NH-2)"]
-            },
-            "USA": {
-                "cities": ["Boston (I-95)", "New York (I-80)", "San Francisco (US-101)", "Chicago (I-90)"]
+                "cities": ["Chennai", "Bengaluru", "Mumbai", "Delhi", "Kolkata", "Hyderabad", "Pune"]
             }
         }
 
@@ -38,6 +39,87 @@ class SOSRouter:
             with open(self.db_path, "r") as f:
                 return json.load(f)
         return []
+
+    def geocode_location(self, query):
+        """Resolves location query via OSM Nominatim API to (lat, lon, city_name)."""
+        import requests
+        url = f"https://nominatim.openstreetmap.org/search?q={query}&format=json&limit=1"
+        headers = {"User-Agent": "VESPER-Vehicle-Emergency-Router-Hackathon/1.0"}
+        try:
+            response = requests.get(url, headers=headers, timeout=8)
+            if response.status_code == 200:
+                data = response.json()
+                if data:
+                    lat = float(data[0]["lat"])
+                    lon = float(data[0]["lon"])
+                    display_name = data[0]["display_name"].split(",")[0]
+                    return lat, lon, display_name
+        except Exception as e:
+            print(f"[Geocode Exception] Nominatim query failed: {e}")
+        return None, None, None
+
+    def fetch_realtime_osm_data(self, lat, lon, radius_meters=15000):
+        """Fetches actual nearby hospitals and police stations from OpenStreetMap Overpass API."""
+        import requests
+        url = "https://overpass-api.de/api/interpreter"
+        query = f"""
+        [out:json][timeout:15];
+        (
+          node["amenity"="hospital"](around:{radius_meters},{lat},{lon});
+          way["amenity"="hospital"](around:{radius_meters},{lat},{lon});
+          node["amenity"="police"](around:{radius_meters},{lat},{lon});
+          way["amenity"="police"](around:{radius_meters},{lat},{lon});
+        );
+        out center;
+        """
+        try:
+            response = requests.post(url, data={"data": query}, timeout=10)
+            if response.status_code == 200:
+                data = response.json()
+                elements = data.get("elements", [])
+                hospitals = []
+                police = []
+                for elem in elements:
+                    name = elem.get("tags", {}).get("name")
+                    amenity = elem.get("tags", {}).get("amenity")
+                    if not name:
+                        name = "Unspecified Hospital" if amenity == "hospital" else "Unspecified Police Station"
+                    
+                    e_lat = elem.get("lat") or elem.get("center", {}).get("lat")
+                    e_lon = elem.get("lon") or elem.get("center", {}).get("lon")
+                    if not e_lat or not e_lon:
+                        continue
+                        
+                    phone = elem.get("tags", {}).get("phone") or elem.get("tags", {}).get("contact:phone") or ("108" if amenity == "hospital" else "100")
+                    
+                    item = {
+                        "name": name,
+                        "lat": e_lat,
+                        "lon": e_lon,
+                        "phone": phone
+                    }
+                    if amenity == "hospital":
+                        tags = elem.get("tags", {})
+                        level = 3
+                        # Assign trauma level based on tags
+                        if "trauma" in name.lower() or tags.get("emergency") == "yes" or tags.get("healthcare:speciality") == "trauma":
+                            level = 1
+                        elif tags.get("hospital:type") == "general" or tags.get("healthcare") == "hospital" or "general" in name.lower():
+                            level = 2
+                        item["level"] = level
+                        item["beds"] = int((e_lat * 1000 + e_lon * 1000) % 15) + 3
+                        item["specialties"] = ["Trauma Care", "Emergency Med"] if level == 1 else ["General Med", "First Aid"]
+                        hospitals.append(item)
+                    elif amenity == "police":
+                        police.append(item)
+                
+                self.realtime_hospitals = hospitals
+                self.realtime_police = police
+                print(f"[Real-Time OSM] Loaded {len(hospitals)} hospitals & {len(police)} police stations.")
+                return True
+        except Exception as e:
+            print(f"[Real-Time OSM Exception] Overpass API failed: {e}")
+        return False
 
     def calculate_haversine(self, lat1, lon1, lat2, lon2):
         """Calculates distance in kilometers between two coordinate pairs completely offline."""
@@ -102,24 +184,25 @@ class SOSRouter:
 
     # ------------------ GUI Integration Helper Methods ------------------
     def get_nearest_services(self, category):
-        country_code = "IN" if self.current_country.upper() in ["IN", "INDIA"] else "US"
+        country_code = "IN"
         metadata = self.fetch_offline_metadata(country_code)
         
         if category == "hospitals":
-            # Select active country hospitals list
-            self.hospitals = metadata.get("hospitals", [])
-            # Overwrite with local trauma_centers.json for India, Chennai
-            if country_code == "IN" and "Chennai" in self.current_city:
-                local_hosp = self.load_database()
-                if local_hosp:
-                    self.hospitals = local_hosp
+            if self.realtime_hospitals:
+                self.hospitals = self.realtime_hospitals
+            else:
+                self.hospitals = metadata.get("hospitals", [])
+                if "Chennai" in self.current_city:
+                    local_hosp = self.load_database()
+                    if local_hosp:
+                        self.hospitals = local_hosp
                     
             raw_results = self.run_triage_routing(self.current_lat, self.current_lon, severity="critical")
             gui_results = []
             trauma_desc_map = {
-                1: "Level 1: PolyTrauma",
-                2: "Level 2: District",
-                3: "Level 3: Local PHC"
+                1: "Level 1: PolyTrauma Center",
+                2: "Level 2: District Hospital",
+                3: "Level 3: Local PHC Clinic"
             }
             for r in raw_results:
                 level_desc = trauma_desc_map.get(r['trauma_level'], f"Level {r['trauma_level']}")
@@ -131,9 +214,30 @@ class SOSRouter:
                 })
             return gui_results
 
+        if category == "police_stations":
+            if self.realtime_police:
+                results = []
+                for p in self.realtime_police:
+                    dist = self.calculate_haversine(self.current_lat, self.current_lon, p["lat"], p["lon"])
+                    results.append({
+                        "name": p["name"],
+                        "distance": round(dist, 2),
+                        "phone": p["phone"],
+                        "address": f"Local Police Station | Call: {p['phone']}"
+                    })
+                results.sort(key=lambda x: x["distance"])
+                return results
+            else:
+                police = metadata.get("services", {}).get("police", {})
+                return [{
+                    "name": police.get("title", "Police Patrol"),
+                    "distance": 1.2,
+                    "phone": police.get("phone", "100"),
+                    "address": "Local Dispatch Unit"
+                }]
+
         # Handle other categories
         key_map = {
-            "police_stations": "services",
             "towing_services": "towing",
             "puncture_shops": "puncture_shops",
             "showrooms": "showrooms"
@@ -141,16 +245,6 @@ class SOSRouter:
         db_key = key_map.get(category)
         
         results = []
-        if db_key == "services":
-            police = metadata.get("services", {}).get("police", {})
-            results.append({
-                "name": police.get("title", "Police"),
-                "distance": 1.2,
-                "phone": police.get("phone", "100"),
-                "address": "Local Dispatch"
-            })
-            return results
-            
         services = metadata.get(db_key, [])
         for idx, svc in enumerate(services):
             # Calculate mock distance or read mock distance
@@ -169,7 +263,7 @@ class SOSRouter:
         return results
 
     def get_emergency_numbers(self):
-        country_code = "IN" if self.current_country.upper() in ["IN", "INDIA"] else "US"
+        country_code = "IN"
         metadata = self.fetch_offline_metadata(country_code)
         services = metadata.get("services", {})
         return {

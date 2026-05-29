@@ -70,6 +70,7 @@ class HybridAttentionSpeechApp:
         # Track if we've shown alerts to prevent continuous display
         self.stress_alert_shown = False
         self.help_alert_shown = False
+        self.yawn_alert_shown = False
 
     @property
     def offensive_language_count(self):
@@ -111,6 +112,26 @@ class HybridAttentionSpeechApp:
                 # Store attention score for final calculation
                 self.attention_scores.append(attention_score)
                 
+                # Update speech recognizer's is_on_call status dynamically
+                is_on_call_state = (drowsiness_alert == "LOW_ATTENTION")
+                self.speech_recognizer.is_on_call = is_on_call_state
+                
+                # Check for phone use alert trigger
+                if is_on_call_state:
+                    if not self.stress_alert_shown:
+                        self.stress_alert_shown = True
+                        self.root.after(0, self.gui.show_stress_warning, "Driver on Call (Low Attention)")
+                else:
+                    self.stress_alert_shown = False
+                
+                # Check for yawn alert trigger
+                if yawning_detected:
+                    if not self.yawn_alert_shown:
+                        self.yawn_alert_shown = True
+                        self.root.after(0, self.gui.show_stress_warning, "Driver Yawning (Sleepiness Alert)")
+                else:
+                    self.yawn_alert_shown = False
+
                 # Update GUI with attention and drowsiness data (thread-safely)
                 self.root.after(0, self.gui.update_attention, attention_score)
                 self.root.after(0, self.gui.update_drowsiness, drowsiness_alert)
@@ -254,6 +275,33 @@ class HybridAttentionSpeechApp:
             log_msg += f"💬 Payload: \"{message}\"\n"
             print(f"[GSM Emulation] Offline fallback active. Payload: {message}")
             
+            # Format detailed serial log for the GUI terminal pop-up
+            terminal_log = "[GSM Serial Link Monitor]\nInitializing serial port scan...\n"
+            ports_scanned = [f"COM{i}" for i in range(1, 10)] + [f"/dev/ttyUSB{i}" for i in range(3)] + [f"/dev/ttyACM{i}" for i in range(3)]
+            for port in ports_scanned:
+                terminal_log += f"- {port}: Scan Timeout (No device found)\n"
+                
+            terminal_log += "\n[!] Warning: No physical GSM Shield detected.\n"
+            terminal_log += "[*] Engaging V.E.S.P.E.R. Automated Satellite Fallback.\n"
+            terminal_log += "[*] Broadcasting simulated SMS payload.\n\n"
+            terminal_log += "[Serial Terminal Output]\n"
+            terminal_log += "-----------------------------------------\n"
+            terminal_log += ">>> AT\n"
+            terminal_log += "<<< OK\n"
+            terminal_log += ">>> AT+CMGF=1\n"
+            terminal_log += "<<< OK\n"
+            terminal_log += f'>>> AT+CMGS="{phone_number}"\n'
+            terminal_log += "<<< >\n"
+            terminal_log += f">>> {message}\n"
+            terminal_log += ">>> (Ctrl+Z) [0x1A]\n"
+            terminal_log += "<<< +CMGS: 42\n"
+            terminal_log += "<<< OK\n"
+            terminal_log += "-----------------------------------------\n"
+            terminal_log += "[SUCCESS] SMS payload successfully routed via Satellite Emulator!\n"
+            
+            if hasattr(self, 'gui') and self.gui:
+                self.root.after(0, self.gui.show_gsm_terminal, terminal_log)
+            
         return log_msg
 
     # Crash event handler
@@ -318,6 +366,57 @@ class HybridAttentionSpeechApp:
 
 
 
+    def save_session_data(self):
+        """Automatically saves the attention index graph and transcription logs for audit reporting."""
+        os.makedirs("data", exist_ok=True)
+        timestamp = time.strftime("%Y%m%d_%H%M%S")
+        
+        # 1. Save Attention Timeline Graph
+        try:
+            import matplotlib.pyplot as plt
+            plt.figure(figsize=(9, 4))
+            plt.plot(self.attention_scores, color="#8B5CF6", linewidth=2.5)
+            plt.title("Driver Attention Index Timeline Graph", fontsize=12, fontweight="bold")
+            plt.xlabel("Timeline Checkpoints (Readings)", fontsize=10)
+            plt.ylabel("Attention Level (%)", fontsize=10)
+            plt.ylim(0, 100)
+            plt.grid(True, linestyle="--", alpha=0.4)
+            chart_path = f"data/attention_graph_{timestamp}.png"
+            plt.savefig(chart_path, dpi=100, bbox_inches="tight")
+            plt.close()
+            print(f"[Session Report] Successfully exported attention graph: {chart_path}")
+        except Exception as e:
+            print(f"[Session Report Warning] Failed to export attention graph: {e}")
+            
+        # 2. Save Current Cabin Speech Logs
+        try:
+            speech_log_path = f"data/speech_log_{timestamp}.txt"
+            log_content = ""
+            if hasattr(self, 'gui') and self.gui and hasattr(self.gui, 'transcription_text'):
+                try:
+                    log_content = self.gui.transcription_text.get("1.0", tk.END).strip()
+                except Exception:
+                    pass
+            
+            if not log_content:
+                log_content = f"[No speech transcriptions recorded in GUI. Last text: '{self.speech_recognizer.speech_text}']"
+                
+            with open(speech_log_path, "w", encoding="utf-8") as f:
+                f.write("===================================================\n")
+                f.write("      V.E.S.P.E.R. - CABIN AUDIO TRANSCRIPTION LOG       \n")
+                f.write("===================================================\n")
+                f.write(f"Session Timestamp  : {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+                f.write(f"Drive Duration     : {((time.time() - self.ride_start_time) / 60):.2f} minutes\n")
+                f.write(f"Final Attention    : {self.calculate_final_score()}%\n")
+                f.write(f"Cognitive Incidents: {self.behavioral_stress_count}\n")
+                f.write("---------------------------------------------------\n\n")
+                f.write(log_content)
+                f.write("\n\n===================================================\n")
+                
+            print(f"[Session Report] Successfully exported speech transcript: {speech_log_path}")
+        except Exception as e:
+            print(f"[Session Report Warning] Failed to export speech transcript: {e}")
+
     # Run the application
     def run(self):
         try:
@@ -341,6 +440,9 @@ class HybridAttentionSpeechApp:
             driver_rating = self.get_driver_rating(final_score)
             ride_duration = (self.ride_end_time - self.ride_start_time) / 60
             readings = len(self.attention_scores)
+            
+            # Trigger session logging and graph exporting
+            self.save_session_data()
             
             try:
                 self.gui.show_final_score(final_score, driver_rating, ride_duration, readings, self.behavioral_stress_count)
