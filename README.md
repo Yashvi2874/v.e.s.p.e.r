@@ -6,6 +6,16 @@ Built to target the critical post-crash **"Golden Hour"** window highlighted by 
 
 ---
 
+## 📸 System Dashboards in Action
+
+### Tab 1: Live Safety Monitor (Biometrics Feed)
+![V.E.S.P.E.R. Live Monitor Tab](docs/images/live_monitor_tab.png)
+
+### Tab 2: RoadSOS Hub (India-Wide Real-Time Emergency Triage Routing)
+![V.E.S.P.E.R. RoadSOS Hub Tab](docs/images/roadsos_hub_tab.png)
+
+---
+
 ## 📖 Project Overview & Core Logic
 
 Unlike standard navigation apps that fail during network outages or route traffic uniformly regardless of medical requirements, **V.E.S.P.E.R.** features a deterministic **Clinical-Aware Triage Routing Engine**. When an incident occurs (such as a high-G deceleration signature or an occupant's verbal cry for help), the application overrides standard operations and redirects resources to a 100% offline geodetic spatial dashboard. This engine runs geodetic Haversine calculations locally on the CPU to index, filter, and rank nearby rescue infrastructure based on their clinical capabilities and spatial proximity.
